@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareDiet - Clinical Nutrition Platform</title>
+    
+    <!-- React and ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        clinical: { 50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e' },
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Poppins', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- html2canvas & jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .glass-card { background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); }
+        .bg-medical-pattern { background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px; }
+        /* Hide scrollbar for clean UI */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        // --- ICONS (SVG inline) ---
+        const IconActivity = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;
+        const IconUsers = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+        const IconFileText = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>;
+        const IconTrendingUp = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>;
+        const IconDroplet = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>;
+        const IconPrinter = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>;
+        const IconHeart = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>;
+        const IconShare = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>;
+        const IconPieChart = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
+        const IconChevronDown = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>;
+        const IconMenu = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>;
+        const IconSunrise = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h20"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg>;
+        const IconCoffee = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>;
+        const IconMoon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>;
+        const IconSun = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>;
+
+        // --- DATABASE MOCK (LocalStorage) ---
+        const db = {
+            getCollection: (coll) => JSON.parse(localStorage.getItem(`carediet_${coll}`) || '[]'),
+            saveCollection: (coll, data) => localStorage.setItem(`carediet_${coll}`, JSON.stringify(data)),
+            insertItem: (coll, item) => { const c = db.getCollection(coll); c.push(item); db.saveCollection(coll, c); },
+            updateItem: (coll, id, item) => { const c = db.getCollection(coll); const idx = c.findIndex(x => x.id === id); if(idx>-1) { c[idx] = {...c[idx], ...item}; db.saveCollection(coll, c); } },
+            getItemById: (coll, id) => db.getCollection(coll).find(x => x.id === id),
+            getPatientByMobile: (mobile) => db.getCollection('Patients').find(x => x.mobile === mobile),
+            getPlansByPatientId: (patientId) => db.getCollection('DietPlans').filter(x => x.patientId === patientId),
+            // Default Food Library initialization if missing
+            initFoodLibrary: () => {
+                const FOOD_LIB_VERSION = 'v4';
+                if(localStorage.getItem('carediet_FoodLibraryVersion') !== FOOD_LIB_VERSION) {
+                    localStorage.setItem('carediet_FoodLibraryVersion', FOOD_LIB_VERSION);
+                    db.saveCollection('FoodLibrary', [
+                        { id: '1', category: 'vegetables', name: 'Spinach', zone: 'green', benefits: ['Iron rich', 'Antioxidants'], conditions: ['Anemia', 'General'], glycemicIndex: 'low', calories: 23, protein: 2.9, carbs: 3.6, fiber: 2.2, season: 'winter' },
+                        { id: '2', category: 'grains', name: 'Oats', zone: 'green', benefits: ['High fiber', 'Heart health'], conditions: ['Diabetes', 'High Blood Pressure', 'Weight Management'], glycemicIndex: 'low', calories: 389, protein: 16.9, carbs: 66.3, fiber: 10.6, season: 'all' },
+                        { id: '3', category: 'protein', name: 'Lentils (Dal)', zone: 'green', benefits: ['Plant protein'], conditions: ['General'], glycemicIndex: 'low', calories: 116, protein: 9, carbs: 20, fiber: 8, season: 'all' },
+                        { id: '4', category: 'snacks', name: 'Almonds', zone: 'green', benefits: ['Healthy fats'], conditions: ['General', 'Diabetes'], glycemicIndex: 'low', calories: 579, protein: 21, carbs: 21, fiber: 12, season: 'all' },
+                        { id: '5', category: 'fruits', name: 'Apple', zone: 'green', benefits: ['Vitamins', 'Fiber'], conditions: ['General'], glycemicIndex: 'low', calories: 52, protein: 0.3, carbs: 14, fiber: 2.4, season: 'all' },
+                        { id: '6', category: 'fruits', name: 'Mango', zone: 'yellow', benefits: ['Vitamin C'], conditions: ['Avoid in Diabetes'], glycemicIndex: 'medium', calories: 60, protein: 0.8, carbs: 15, fiber: 1.6, season: 'summer' },
+                        { id: '7', category: 'grains', name: 'Brown Rice', zone: 'green', benefits: ['Complex carbs', 'B Vitamins'], conditions: ['Diabetes', 'Weight Management'], glycemicIndex: 'medium', calories: 111, protein: 2.6, carbs: 23, fiber: 1.8, season: 'all' },
+                        { id: '8', category: 'protein', name: 'Chicken Breast', zone: 'green', benefits: ['Lean protein', 'Muscle building'], conditions: ['General', 'Weight Management'], glycemicIndex: 'low', calories: 165, protein: 31, carbs: 0, fiber: 0, season: 'all' },
+                        { id: '9', category: 'protein', name: 'Eggs (Whole)', zone: 'yellow', benefits: ['Complete protein', 'Choline'], conditions: ['General'], glycemicIndex: 'low', calories: 155, protein: 13, carbs: 1.1, fiber: 0, season: 'all' },
+                        { id: '10', category: 'fruits', name: 'Banana', zone: 'yellow', benefits: ['Potassium', 'Quick energy'], conditions: ['High Blood Pressure'], glycemicIndex: 'medium', calories: 89, protein: 1.1, carbs: 22.8, fiber: 2.6, season: 'all' },
+                        { id: '11', category: 'vegetables', name: 'Broccoli', zone: 'green', benefits: ['Vitamin K', 'Fiber'], conditions: ['General', 'Heart Disease'], glycemicIndex: 'low', calories: 34, protein: 2.8, carbs: 6.6, fiber: 2.6, season: 'winter' },
+                        { id: '12', category: 'snacks', name: 'Walnuts', zone: 'green', benefits: ['Omega-3', 'Brain health'], conditions: ['Heart Disease', 'Mental Health'], glycemicIndex: 'low', calories: 654, protein: 15.2, carbs: 13.7, fiber: 6.7, season: 'all' },
+                        { id: '13', category: 'dairy', name: 'Greek Yogurt', zone: 'green', benefits: ['Probiotics', 'Calcium'], conditions: ['Digestive Problems', 'General'], glycemicIndex: 'low', calories: 59, protein: 10, carbs: 3.6, fiber: 0, season: 'all' },
+                        { id: '14', category: 'grains', name: 'Quinoa', zone: 'green', benefits: ['Complete protein', 'GF'], conditions: ['Gluten Avoidance', 'Diabetes'], glycemicIndex: 'low', calories: 120, protein: 4.4, carbs: 21.3, fiber: 2.8, season: 'all' },
+                        { id: '15', category: 'vegetables', name: 'Sweet Potato', zone: 'yellow', benefits: ['Vitamin A', 'Antioxidants'], conditions: ['General'], glycemicIndex: 'medium', calories: 86, protein: 1.6, carbs: 20.1, fiber: 3, season: 'winter' },
+                        { id: '16', category: 'protein', name: 'Salmon', zone: 'green', benefits: ['Omega-3', 'Vitamin D'], conditions: ['Heart Disease', 'Arthritis/Joint Pain'], glycemicIndex: 'low', calories: 208, protein: 20, carbs: 0, fiber: 0, season: 'all' },
+                        { id: '17', category: 'fruits', name: 'Berries (Mixed)', zone: 'green', benefits: ['Antioxidants', 'Low sugar'], conditions: ['Diabetes', 'Skin Problems'], glycemicIndex: 'low', calories: 57, protein: 0.7, carbs: 14.5, fiber: 3, season: 'summer' },
+                        { id: '18', category: 'snacks', name: 'Chia Seeds', zone: 'green', benefits: ['Fiber', 'Omega-3'], conditions: ['Digestive Problems', 'General'], glycemicIndex: 'low', calories: 486, protein: 16.5, carbs: 42.1, fiber: 34.4, season: 'all' },
+                        { id: '19', category: 'vegetables', name: 'Bottle Gourd (Lauki)', zone: 'green', benefits: ['Cooling', 'Hydrating'], conditions: ['Liver/Kidney Issues', 'Weight Management'], glycemicIndex: 'low', calories: 14, protein: 0.6, carbs: 3.4, fiber: 0.5, season: 'summer' },
+                        { id: '20', category: 'dairy', name: 'Paneer (Cottage Cheese)', zone: 'yellow', benefits: ['Protein', 'Calcium'], conditions: ['General'], glycemicIndex: 'low', calories: 265, protein: 18, carbs: 1.2, fiber: 0, season: 'all' },
+                        { id: '21', category: 'snacks', name: 'Roasted Makhana', zone: 'green', benefits: ['Low calorie', 'Crunchy'], conditions: ['Weight Management', 'Diabetes'], glycemicIndex: 'low', calories: 347, protein: 9.7, carbs: 76.9, fiber: 14.5, season: 'all' },
+                        { id: '22', category: 'vegetables', name: 'Bitter Gourd (Karela)', zone: 'green', benefits: ['Blood sugar control'], conditions: ['Diabetes'], glycemicIndex: 'low', calories: 17, protein: 1, carbs: 3.7, fiber: 2.8, season: 'summer' },
+                        { id: '23', category: 'fruits', name: 'Papaya', zone: 'green', benefits: ['Digestion aid', 'Vitamin C'], conditions: ['Digestive Problems', 'Skin Problems'], glycemicIndex: 'medium', calories: 43, protein: 0.5, carbs: 11, fiber: 1.7, season: 'summer' },
+                        { id: '24', category: 'drinks', name: 'Coconut Water', zone: 'green', benefits: ['Electrolytes', 'Hydration'], conditions: ['High Blood Pressure', 'General'], glycemicIndex: 'low', calories: 19, protein: 0.7, carbs: 3.7, fiber: 1.1, season: 'summer' },
+                        { id: '25', category: 'drinks', name: 'Green Tea', zone: 'green', benefits: ['Metabolism booster', 'Antioxidants'], conditions: ['Weight Management', 'Heart Disease'], glycemicIndex: 'low', calories: 1, protein: 0, carbs: 0, fiber: 0, season: 'all' },
+                        { id: '26', category: 'grains', name: 'Whole Wheat Roti', zone: 'green', benefits: ['Fiber', 'Complex carbs'], conditions: ['General', 'Diabetes'], glycemicIndex: 'low', calories: 71, protein: 2.7, carbs: 15.6, fiber: 1.9, season: 'all' },
+                        { id: '27', category: 'vegetables', name: 'Tomato', zone: 'green', benefits: ['Lycopene', 'Vitamin C'], conditions: ['General', 'Heart Disease'], glycemicIndex: 'low', calories: 18, protein: 0.9, carbs: 3.9, fiber: 1.2, season: 'all' },
+                        { id: '28', category: 'vegetables', name: 'Carrot', zone: 'green', benefits: ['Beta-carotene', 'Eye health'], conditions: ['General', 'Thyroid Issues'], glycemicIndex: 'low', calories: 41, protein: 0.9, carbs: 9.6, fiber: 2.8, season: 'winter' },
+                        { id: '29', category: 'protein', name: 'Chickpeas (Chana)', zone: 'green', benefits: ['Plant protein', 'Fiber'], conditions: ['Diabetes', 'Weight Management'], glycemicIndex: 'low', calories: 164, protein: 8.9, carbs: 27.4, fiber: 7.6, season: 'all' },
+                        { id: '30', category: 'protein', name: 'Tofu', zone: 'green', benefits: ['Plant protein', 'Calcium'], conditions: ['PCOS/PCOD', 'General'], glycemicIndex: 'low', calories: 76, protein: 8, carbs: 1.9, fiber: 0.3, season: 'all' },
+                        { id: '31', category: 'snacks', name: 'Pumpkin Seeds', zone: 'green', benefits: ['Zinc', 'Magnesium'], conditions: ['PCOS/PCOD', 'Mental Health'], glycemicIndex: 'low', calories: 559, protein: 30.2, carbs: 10.7, fiber: 6, season: 'all' },
+                        { id: '32', category: 'dairy', name: 'Low-fat Milk', zone: 'green', benefits: ['Calcium', 'Vitamin D'], conditions: ['General', 'Arthritis/Joint Pain'], glycemicIndex: 'low', calories: 42, protein: 3.4, carbs: 5, fiber: 0, season: 'all' },
+                        { id: '33', category: 'fruits', name: 'Guava', zone: 'green', benefits: ['Vitamin C', 'Fiber'], conditions: ['Diabetes', 'General'], glycemicIndex: 'low', calories: 68, protein: 2.6, carbs: 14.3, fiber: 5.4, season: 'winter' },
+                        { id: '34', category: 'fruits', name: 'Pomegranate', zone: 'green', benefits: ['Antioxidants', 'Iron'], conditions: ['Anemia', 'Heart Disease'], glycemicIndex: 'low', calories: 83, protein: 1.7, carbs: 18.7, fiber: 4, season: 'winter' },
+                        { id: '35', category: 'grains', name: 'Dalia (Broken Wheat)', zone: 'green', benefits: ['High fiber', 'Easy digest'], conditions: ['Digestive Problems', 'Weight Management'], glycemicIndex: 'low', calories: 130, protein: 4, carbs: 31, fiber: 4.5, season: 'all' },
+                        { id: '36', category: 'snacks', name: 'Roasted Chana', zone: 'green', benefits: ['Protein', 'Fiber'], conditions: ['Diabetes', 'Weight Management'], glycemicIndex: 'low', calories: 354, protein: 19, carbs: 59, fiber: 17.4, season: 'all' },
+                        { id: '37', category: 'vegetables', name: 'Ridge Gourd (Tori)', zone: 'green', benefits: ['Low calorie', 'Digestive'], conditions: ['Liver/Kidney Issues', 'Weight Management'], glycemicIndex: 'low', calories: 18, protein: 0.7, carbs: 3.4, fiber: 0.5, season: 'summer' },
+                        { id: '38', category: 'drinks', name: 'Buttermilk (Chaas)', zone: 'green', benefits: ['Probiotics', 'Cooling'], conditions: ['Digestive Problems', 'General'], glycemicIndex: 'low', calories: 40, protein: 3.3, carbs: 5, fiber: 0, season: 'summer' },
+                        { id: '39', category: 'protein', name: 'Fish (Rohu/Catla)', zone: 'green', benefits: ['Omega-3', 'Lean protein'], conditions: ['Heart Disease', 'General'], glycemicIndex: 'low', calories: 97, protein: 16.6, carbs: 0, fiber: 0, season: 'all' },
+                        { id: '40', category: 'snacks', name: 'Flaxseeds', zone: 'green', benefits: ['Omega-3', 'Hormonal balance'], conditions: ['PCOS/PCOD', 'Thyroid Issues'], glycemicIndex: 'low', calories: 534, protein: 18.3, carbs: 28.9, fiber: 27.3, season: 'all' },
+                        { id: '41', category: 'snacks', name: 'Potato Chips', zone: 'red', benefits: [], conditions: ['Avoid in Diabetes', 'Avoid in High Blood Pressure', 'Avoid in Weight Management'], glycemicIndex: 'high', calories: 536, protein: 7, carbs: 53, fiber: 4.8, season: 'all' },
+                        { id: '42', category: 'drinks', name: 'Sugary Soda (Cola)', zone: 'red', benefits: [], conditions: ['Avoid in Diabetes', 'Avoid in Weight Management', 'Avoid in PCOS/PCOD'], glycemicIndex: 'high', calories: 140, protein: 0, carbs: 39, fiber: 0, season: 'all' },
+                        { id: '43', category: 'snacks', name: 'Samosa (Fried)', zone: 'red', benefits: [], conditions: ['Avoid in Diabetes', 'Avoid in Heart Disease', 'Avoid in Weight Management'], glycemicIndex: 'high', calories: 308, protein: 5.3, carbs: 32, fiber: 2, season: 'all' },
+                        { id: '44', category: 'grains', name: 'White Bread', zone: 'red', benefits: [], conditions: ['Avoid in Diabetes', 'Avoid in Weight Management'], glycemicIndex: 'high', calories: 265, protein: 9, carbs: 49, fiber: 2.7, season: 'all' },
+                        { id: '45', category: 'snacks', name: 'Instant Noodles', zone: 'red', benefits: [], conditions: ['Avoid in High Blood Pressure', 'Avoid in Heart Disease', 'Avoid in Weight Management'], glycemicIndex: 'high', calories: 436, protein: 9.9, carbs: 62.5, fiber: 2, season: 'all' },
+                        { id: '46', category: 'dairy', name: 'Ice Cream', zone: 'red', benefits: [], conditions: ['Avoid in Diabetes', 'Avoid in Weight Management', 'Avoid in PCOS/PCOD'], glycemicIndex: 'high', calories: 207, protein: 3.5, carbs: 24, fiber: 0.7, season: 'all' },
+                        { id: '47', category: 'snacks', name: 'French Fries', zone: 'red', benefits: [], conditions: ['Avoid in Diabetes', 'Avoid in Heart Disease', 'Avoid in Weight Management'], glycemicIndex: 'high', calories: 312, protein: 3.4, carbs: 41, fiber: 3.8, season: 'all' },
+                        { id: '48', category: 'drinks', name: 'Packaged Fruit Juice', zone: 'red', benefits: [], conditions: ['Avoid in Diabetes', 'Avoid in Weight Management'], glycemicIndex: 'high', calories: 112, protein: 0.4, carbs: 26, fiber: 0.2, season: 'all' },
+                        { id: '49', category: 'snacks', name: 'Mithai / Indian Sweets', zone: 'red', benefits: [], conditions: ['Avoid in Diabetes', 'Avoid in Weight Management', 'Avoid in Heart Disease'], glycemicIndex: 'high', calories: 450, protein: 6, carbs: 55, fiber: 0.5, season: 'all' },
+                        { id: '50', category: 'grains', name: 'White Rice (Polished)', zone: 'red', benefits: [], conditions: ['Avoid in Diabetes', 'Avoid in Weight Management'], glycemicIndex: 'high', calories: 130, protein: 2.7, carbs: 28, fiber: 0.4, season: 'all' },
+                        { id: '51', category: 'protein', name: 'Fried Chicken (Fast Food)', zone: 'red', benefits: [], conditions: ['Avoid in Heart Disease', 'Avoid in High Blood Pressure', 'Avoid in Weight Management'], glycemicIndex: 'medium', calories: 320, protein: 17, carbs: 15, fiber: 0.5, season: 'all' },
+                        { id: '52', category: 'snacks', name: 'Biscuits / Cookies', zone: 'red', benefits: [], conditions: ['Avoid in Diabetes', 'Avoid in Weight Management'], glycemicIndex: 'high', calories: 480, protein: 5.5, carbs: 68, fiber: 1.8, season: 'all' },
+                        { id: '53', category: 'snacks', name: 'Pickle (Achar)', zone: 'red', benefits: [], conditions: ['Avoid in High Blood Pressure', 'Avoid in Liver/Kidney Issues'], glycemicIndex: 'low', calories: 50, protein: 1, carbs: 10, fiber: 1, season: 'all' },
+                        { id: '54', category: 'drinks', name: 'Energy Drinks', zone: 'red', benefits: [], conditions: ['Avoid in High Blood Pressure', 'Avoid in Heart Disease', 'Avoid in Mental Health'], glycemicIndex: 'high', calories: 110, protein: 0, carbs: 28, fiber: 0, season: 'all' },
+                        { id: '55', category: 'snacks', name: 'Papad (Fried)', zone: 'red', benefits: [], conditions: ['Avoid in High Blood Pressure', 'Avoid in Digestive Problems'], glycemicIndex: 'medium', calories: 371, protein: 25.5, carbs: 46, fiber: 2, season: 'all' }
+                    ]);
+                }
+            }
+        };
+        db.initFoodLibrary();
+
+        const HEALTH_CONDITIONS = ["Diabetes", "High Blood Pressure (Hypertension)", "Heart Disease", "Thyroid Issues", "PCOS/PCOD", "Digestive Problems", "Weight Management", "Anemia", "Arthritis/Joint Pain", "Asthma/Respiratory Issues", "Liver/Kidney Issues", "Mental Health (Stress/Anxiety)", "Skin Problems"];
+        const ALLERGIES = ["Dairy", "Gluten", "Nuts", "Eggs", "Shellfish", "Soy"];
+
+        const generateId = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2, 10);
+
+        // --- SMART DIET ENGINE ---
+        // Generates a proper clinical diet plan based on inputs
+        const generateSmartDiet = (patient) => {
+            const plan = {
+                id: generateId(),
+                patientId: patient.id,
+                generatedDate: new Date().toISOString(),
+                validityDays: 30,
+                dos: [], donts: [],
+                emergencySnacks: [],
+                meals: { morning: '', breakfast: '', lunch: '', evening: '', dinner: '' },
+                groceryList: []
+            };
+
+            let isDiabetic = patient.conditions.includes("Diabetes");
+            let isBP = patient.conditions.includes("High Blood Pressure (Hypertension)");
+            let isDigestive = patient.conditions.includes("Digestive Problems");
+            let isElderly = parseInt(patient.age) > 65;
+            let isVeg = patient.dietType === "Vegetarian";
+
+            // Rules -> DOs & DONTs
+            if (isDiabetic) {
+                plan.dos.push("Use low Glycemic Index (GI) foods like oats, barley, and whole pulses.");
+                plan.dos.push("Include a small portion of protein with every meal to stabilize blood sugar.");
+                plan.donts.push("Avoid refined sugars, sweet fruits (mango, banana), and fruit juices.");
+                plan.donts.push("Avoid starchy carbs like potatoes and white rice.");
+                plan.emergencySnacks = ["Handful of roasted chana", "Half an apple with 2 almonds", "Buttermilk"];
+            }
+            if (isBP) {
+                plan.dos.push("Use less than 1 tsp of salt per day (low sodium).");
+                plan.dos.push("Increase potassium-rich vegetables like spinach and bottle gourd.");
+                plan.donts.push("Strictly avoid papad, pickles, commercial sauces, and canned foods.");
+            }
+            if (isElderly) {
+                plan.dos.push("Ensure foods are well-cooked and easily chewable.");
+                plan.dos.push("Drink warm water and stay hydrated frequently.");
+                plan.donts.push("Avoid excessively dry or hard-to-chew foods (raw salads/whole nuts).");
+            }
+            if (isDigestive || patient.conditions.includes("Acidity")) {
+                plan.dos.push("Eat meals at regular intervals. Keep dinner light.");
+                plan.donts.push("Avoid very spicy, deep-fried foods, and excessive tea/coffee.");
+            }
+
+            // Defaults if no specific rules trigger
+            if (plan.dos.length === 0) plan.dos.push("Eat a balanced set of macros.", "Drink 2-3L of water.");
+            if (plan.donts.length === 0) plan.donts.push("Avoid ultra-processed junk food.");
+            if (plan.emergencySnacks.length === 0) plan.emergencySnacks = ["Boiled egg (if non-veg)", "Mixed nuts", "Fruit bowl"];
+
+            // Base meal assignment
+            let oats = isElderly ? "Soft cooked oats porridge" : "Steel-cut oats with seeds";
+            let eggs = isVeg ? "Moong dal chilla (pancake)" : (isElderly ? "Soft boiled eggs" : "Omelet with spinach");
+            let rice = isDiabetic ? "Brown rice or Quinoa" : "White/Brown rice portion";
+            
+            plan.meals.morning = `Warm water ${isBP ? '' : 'with lemon/ginger'}. 5 soaked almonds, 2 walnuts.`;
+            plan.meals.breakfast = `${oats} or ${eggs}. Small portion of allowed fruit.`;
+            plan.meals.lunch = `${rice} / 2 Multigrain Rotis. 1 bowl Dal/Lentil soup. Large portion cooked vegetables (Bottle gourd, Beans).`;
+            plan.meals.evening = `Green tea or Buttermilk. Roasted Makhana (Fox nuts) or roasted chickpeas.`;
+            plan.meals.dinner = `Light vegetable soup. 1 Roti or bowl of Dalia (Broken wheat) with cooked veggies. Eat by 8 PM.`;
+
+            plan.groceryList = ["Oats/Dalia", "Moong Dal", "Fresh seasonal greens", "Bottle gourd", "Almonds/Walnuts", "Makhana", "Green Tea"];
+
+            return plan;
+        };
+
+        // --- COMPONENTS ---
+
+        const Topbar = ({ currentView, onNavigate, onLogout }) => {
+            const [showMenu, setShowMenu] = useState(false);
+            
+            return (
+            <header className="h-16 bg-white border-b border-slate-200 flex flex-col justify-center px-6 sticky top-0 z-20 shadow-sm relative">
+                <div className="flex items-center justify-between max-w-6xl w-full mx-auto">
+                    <div className="flex items-center gap-2 text-clinical-700 cursor-pointer" onClick={() => onNavigate('dashboard')}>
+                        <IconHeart />
+                        <span className="font-display font-bold text-xl tracking-tight">CareDiet<span className="text-slate-400">.Clinic</span></span>
+                    </div>
+                    {currentView !== 'landing' && currentView !== 'login' && currentView !== 'register' && (
+                        <div className="flex items-center gap-6">
+                            <div className="relative">
+                                <button onClick={() => setShowMenu(!showMenu)} className="flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-clinical-600 transition">
+                                    DIET CHART <IconChevronDown />
+                                </button>
+                                {showMenu && (
+                                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50">
+                                        <button onClick={() => { onNavigate('dashboard'); setShowMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"><IconActivity /> Dashboard</button>
+                                        <button onClick={() => { onNavigate('diet-plan'); setShowMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"><IconFileText /> Today's Meal Plan</button>
+                                        <button onClick={() => { onNavigate('food-library'); setShowMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"><div className="w-4 h-4" /> Food Library</button>
+                                        <button onClick={() => { onNavigate('nutrition-analyzer'); setShowMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"><IconPieChart /> Nutrition Analyzer</button>
+                                    </div>
+                                )}
+                            </div>
+                            <span className="text-sm font-medium text-slate-500 max-md:hidden cursor-pointer">Help & Support</span>
+                            <button onClick={onLogout} className="text-sm font-semibold text-clinical-600 hover:text-clinical-800">Exit</button>
+                        </div>
+                    )}
+                </div>
+            </header>
+            );
+        };
+
+        const LandingPage = ({ navTo }) => (
+            <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] p-6 bg-gradient-to-b from-clinical-50 to-white text-center">
+                <div className="w-20 h-20 bg-clinical-100 text-clinical-600 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                    <IconHeart />
+                </div>
+                <h1 className="text-4xl md:text-5xl font-display font-bold text-slate-800 mb-4 tracking-tight">Clinical Nutrition<br/>Tailored for You</h1>
+                <p className="text-lg text-slate-500 max-w-lg mb-10">Intelligent, customized diet plans addressing Diabetes, Hypertension, PCOS, and overall wellbeing based on actual medical guidelines.</p>
+                
+                <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md">
+                    <button onClick={() => navTo('login')} className="flex-1 bg-clinical-600 hover:bg-clinical-700 text-white font-semibold py-4 rounded-xl shadow-lg shadow-clinical-500/30 transition-all text-lg border border-transparent">
+                        Patient Login
+                    </button>
+                    <button onClick={() => navTo('register')} className="flex-1 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-4 rounded-xl shadow-sm border border-slate-200 transition-all text-lg">
+                        Register Now
+                    </button>
+                </div>
+            </div>
+        );
+
+        const PatientLogin = ({ navTo, onLogin }) => {
+            const [mobile, setMobile] = useState('');
+            const [err, setErr] = useState('');
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                const u = db.getPatientByMobile(mobile);
+                if(u) {
+                    onLogin(u);
+                } else {
+                    setErr('Mobile number not found. Please register.');
+                }
+            };
+
+            return (
+                <div className="flex items-center justify-center min-h-[calc(100vh-64px)] p-6">
+                    <form onSubmit={handleLogin} className="glass-card p-8 rounded-2xl w-full max-w-md shadow-xl border-t-4 border-t-clinical-500">
+                        <h2 className="text-2xl font-display font-bold text-slate-800 mb-2">Welcome Back</h2>
+                        <p className="text-slate-500 mb-8">Login with your registered mobile number.</p>
+                        
+                        {err && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm font-medium border border-red-100">{err}</div>}
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1">Mobile Number</label>
+                                <input type="tel" required value={mobile} onChange={e=>setMobile(e.target.value)} placeholder="e.g. 9876543210" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-clinical-500 outline-none transition-all font-medium text-lg"/>
+                            </div>
+                            <button type="submit" className="w-full bg-clinical-600 text-white py-3.5 rounded-xl font-bold text-lg hover:bg-clinical-700 shadow-md">Get OTP / Login</button>
+                        </div>
+                        <div className="text-center mt-6">
+                            <button type="button" onClick={() => navTo('register')} className="text-clinical-600 font-medium hover:underline">New user? Register here</button>
+                        </div>
+                    </form>
+                </div>
+            );
+        };
+
+        const RegistrationFlow = ({ navTo, onLogin }) => {
+            const [step, setStep] = useState(1);
+            const [data, setData] = useState({
+                name: '', age: '', gender: 'Male', mobile: '', email: '',
+                dietType: 'Vegetarian', conditions: [], otherConditions: '', meds: '', allergies: [],
+                sleep: '6-8 hrs', water: '2-3L', exercise: 'Light', stress: 5, history: ''
+            });
+
+            const handleArrayToggle = (field, val) => {
+                const arr = data[field];
+                if (arr.includes(val)) setData({...data, [field]: arr.filter(x => x !== val)});
+                else setData({...data, [field]: [...arr, val]});
+            };
+
+            const completeReg = () => {
+                const patient = { id: generateId(), ...data, joinedAt: new Date().toISOString() };
+                db.insertItem('Patients', patient);
+                
+                // Immediately generate initial diet plan
+                const plan = generateSmartDiet(patient);
+                db.insertItem('DietPlans', plan);
+                
+                onLogin(patient);
+            };
+
+            return (
+                <div className="max-w-3xl mx-auto p-4 py-8">
+                    <div className="flex justify-between items-center mb-8 px-4">
+                        <div className="flex gap-2">
+                            {[1,2,3].map(i => (
+                                <div key={i} className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold ${step === i ? 'bg-clinical-600 text-white' : (step > i ? 'bg-clinical-200 text-clinical-700' : 'bg-slate-200 text-slate-500')}`}>{i}</div>
+                            ))}
+                        </div>
+                        <button type="button" onClick={() => navTo('landing')} className="text-sm font-medium text-slate-500">Cancel</button>
+                    </div>
+
+                    <div className="glass-card rounded-2xl p-6 sm:p-10 shadow-lg border-t-4 border-t-clinical-500">
+                        {step === 1 && (
+                            <div className="space-y-6 animate-[fadeIn_0.3s]">
+                                <div>
+                                    <h2 className="text-2xl font-display font-bold text-slate-800">1. Patient Profile</h2>
+                                    <p className="text-slate-500 text-sm mt-1">Basic demographic information</p>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                    <div className="sm:col-span-2">
+                                        <label className="block text-sm font-semibold mb-1">Full Name</label>
+                                        <input required value={data.name} onChange={e=>setData({...data, name: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Patient's full name" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold mb-1">Mobile Number</label>
+                                        <input required type="tel" value={data.mobile} onChange={e=>setData({...data, mobile: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Primary contact" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold mb-1">Age</label>
+                                        <input required type="number" value={data.age} onChange={e=>setData({...data, age: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Years" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold mb-1">Gender</label>
+                                        <select value={data.gender} onChange={e=>setData({...data, gender: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl">
+                                            <option>Male</option><option>Female</option><option>Other</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold mb-1">Diet Preference</label>
+                                        <select value={data.dietType} onChange={e=>setData({...data, dietType: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl">
+                                            <option>Vegetarian</option><option>Non-Vegetarian</option><option>Eggitarian</option><option>Vegan</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button onClick={() => {if(data.name && data.mobile && data.age) setStep(2); else alert('Fill required fields');}} className="w-full py-4 bg-clinical-600 text-white rounded-xl font-bold text-lg mt-4 shadow-md">Next: Health Profile</button>
+                            </div>
+                        )}
+
+                        {step === 2 && (
+                            <div className="space-y-6 animate-[fadeIn_0.3s]">
+                                <div>
+                                    <h2 className="text-2xl font-display font-bold text-slate-800">2. Clinical Assessment</h2>
+                                    <p className="text-slate-500 text-sm mt-1">Select all conditions that apply</p>
+                                </div>
+                                
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    <label className="block text-sm font-bold text-slate-700 mb-3">Health Conditions</label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {HEALTH_CONDITIONS.map(cond => (
+                                            <label key={cond} className="flex items-center gap-2 p-2 rounded hover:bg-white border border-transparent hover:border-slate-200 transition cursor-pointer">
+                                                <input type="checkbox" checked={data.conditions.includes(cond)} onChange={() => handleArrayToggle('conditions', cond)} className="w-4 h-4 text-clinical-600 rounded focus:ring-clinical-500" />
+                                                <span className="text-sm font-medium text-slate-700">{cond}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold mb-1">Other Health Concerns</label>
+                                    <textarea value={data.otherConditions} onChange={e=>setData({...data, otherConditions: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl" rows={2} placeholder="Briefly describe other concerns..."></textarea>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold mb-1">Current Medications</label>
+                                    <input value={data.meds} onChange={e=>setData({...data, meds: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl" placeholder="E.g., Metformin 500mg, Thyroxine 50mcg" />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold mb-2">Food Allergies / Intolerances</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {ALLERGIES.map(a => (
+                                            <button key={a} onClick={() => handleArrayToggle('allergies', a)} className={`px-4 py-2 rounded-full text-sm font-medium border transition ${data.allergies.includes(a) ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-slate-200 text-slate-600'}`}>{a}</button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-4 pt-4">
+                                    <button onClick={() => setStep(1)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold border border-slate-200">Back</button>
+                                    <button onClick={() => setStep(3)} className="flex-[2] py-3 bg-clinical-600 text-white rounded-xl font-bold shadow-md">Next: Lifestyle</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {step === 3 && (
+                            <div className="space-y-6 animate-[fadeIn_0.3s]">
+                                <div>
+                                    <h2 className="text-2xl font-display font-bold text-slate-800">3. Lifestyle & Habits</h2>
+                                    <p className="text-slate-500 text-sm mt-1">Help us customize your meal timings and variety</p>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                    <div>
+                                        <label className="block text-sm font-semibold mb-1">Sleep Pattern</label>
+                                        <select value={data.sleep} onChange={e=>setData({...data, sleep: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl">
+                                            <option>Less than 6 hrs</option><option>6-8 hrs</option><option>More than 8 hrs</option><option>Irregular</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold mb-1">Daily Water Intake</label>
+                                        <select value={data.water} onChange={e=>setData({...data, water: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl">
+                                            <option>Less than 2L</option><option>2-3L</option><option>More than 3L</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold mb-1">Exercise Routine</label>
+                                        <select value={data.exercise} onChange={e=>setData({...data, exercise: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl">
+                                            <option>None</option><option>Light (Walking)</option><option>Moderate (Gym/Yoga 3x)</option><option>Intense (Daily)</option>
+                                        </select>
+                                    </div>
+                                    <div className="pt-2">
+                                        <label className="block text-sm font-semibold mb-2 flex justify-between"><span>Stress Level</span> <span className="text-clinical-600 font-bold">{data.stress}/10</span></label>
+                                        <input type="range" min="1" max="10" value={data.stress} onChange={e=>setData({...data, stress: e.target.value})} className="w-full accent-clinical-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                        <label className="block text-sm font-semibold mb-1">Previous Diet Attempts</label>
+                                        <textarea value={data.history} onChange={e=>setData({...data, history: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl" rows={2} placeholder="E.g., Tried keto but failed..."></textarea>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4 pt-4">
+                                    <button onClick={() => setStep(2)} className="w-1/3 py-4 bg-slate-100 text-slate-600 rounded-xl font-bold border border-slate-200">Back</button>
+                                    <button onClick={completeReg} className="w-2/3 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-lg shadow-md flex justify-center items-center gap-2">
+                                        Complete & Generate Plan <IconTrendingUp />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )
+        };
+
+        const PatientDashboard = ({ user, navTo }) => {
+            const [selectedDay, setSelectedDay] = useState('Sun');
+            const [weeklyMeals, setWeeklyMeals] = useState({
+                Mon: { morning: true, breakfast: true, lunch: true },
+                Tue: { morning: true, breakfast: true, lunch: true, dinner: true },
+                Wed: { morning: true, breakfast: true, lunch: true, evening: true },
+                Thu: { morning: true, lunch: true, evening: true },
+                Fri: { morning: true, breakfast: true, lunch: true, evening: true, dinner: true },
+                Sat: { breakfast: true, lunch: true, evening: true, dinner: true },
+                Sun: {}
+            });
+            const [weeklyWater, setWeeklyWater] = useState({ Mon: 4, Tue: 6, Wed: 8, Thu: 5, Fri: 8, Sat: 6, Sun: 0 });
+            const [mood, setMood] = useState('😐');
+            const [mealFeelings, setMealFeelings] = useState({});
+            const [switchedMeals, setSwitchedMeals] = useState({});
+
+            const LIGHTER_OPTIONS = {
+                morning: [ "Clear warm water (12.00 cal, 0.00g Pro, 0.00g Fib)", "Green tea without sugar (2.00 cal, 0.00g Pro, 0.00g Fib)", "Tulsi & Ginger Drink (15.00 cal, 0.00g Pro, 0.00g Fib)" ],
+                breakfast: [ "Fruit Bowl (280.00 cal, 2.00g Pro, 6.00g Fib)", "1 slice whole wheat toast (150.00 cal, 4.00g Pro, 3.00g Fib)", "Oatmeal with water (200.00 cal, 5.00g Pro, 4.00g Fib)" ],
+                lunch: [ "1 Roti with boiled veg (320.00 cal, 8.00g Pro, 7.00g Fib)", "Salad bowl with chickpeas (250.00 cal, 10.00g Pro, 9.00g Fib)", "Clear Lentil Soup (180.00 cal, 12.00g Pro, 5.00g Fib)" ],
+                evening: [ "1 Apple (52.00 cal, 0.30g Pro, 2.40g Fib)", "Cucumber sticks (80.00 cal, 1.00g Pro, 2.00g Fib)", "Green Tea & 2 Almonds (30.00 cal, 1.00g Pro, 1.00g Fib)" ],
+                dinner: [ "Half portion of dinner (200.00 cal, 6.00g Pro, 5.00g Fib)", "Clear vegetable broth (80.00 cal, 2.00g Pro, 3.00g Fib)", "Steamed Bottle Gourd (60.00 cal, 1.00g Pro, 4.00g Fib)" ]
+            };
+
+            const plans = db.getPlansByPatientId(user.id);
+            const activePlan = plans[plans.length - 1]; // Assume latest is active
+
+            // Tracking progress
+            const todayStr = new Date().toDateString();
+
+            const trackedMeals = weeklyMeals[selectedDay] || {};
+            const setTrackedMeals = (newMeals) => setWeeklyMeals({...weeklyMeals, [selectedDay]: newMeals});
+
+            const water = weeklyWater[selectedDay] || 0;
+            const setWater = (newWater) => setWeeklyWater({...weeklyWater, [selectedDay]: newWater});
+
+            const handleSwitchLighter = (mealId) => {
+                const nextIdx = switchedMeals[mealId] !== undefined ? (switchedMeals[mealId] + 1) % LIGHTER_OPTIONS[mealId].length : 0;
+                setSwitchedMeals({...switchedMeals, [mealId]: nextIdx});
+            };
+
+            const daysList = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const weeklyProgress = daysList.map(d => ({
+                day: d,
+                completion: Math.round((Object.values(weeklyMeals[d] || {}).filter(Boolean).length / 5) * 100) || 0,
+                water: weeklyWater[d] || 0
+            }));
+
+            return (
+                <div className="max-w-6xl mx-auto p-4 py-8 space-y-6 animate-[fadeIn_0.5s]">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                        <div>
+                            <h1 className="text-3xl font-display font-bold text-slate-800">Hello, {user.name} 👋</h1>
+                            <p className="text-slate-500 font-medium">Your personalized clinical diet track is ready.</p>
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={() => navTo('nutrition-analyzer')} className="bg-white text-clinical-600 px-4 py-3 rounded-xl font-bold border border-clinical-200 shadow-sm hover:bg-slate-50 transition flex items-center gap-2">
+                                <IconPieChart /> Analyze Meal
+                            </button>
+                            <button onClick={() => navTo('diet-plan')} className="bg-clinical-600 text-white px-6 py-3 rounded-xl font-bold shadow-md hover:bg-clinical-700 transition flex items-center gap-2 border border-clinical-700">
+                                <IconFileText /> View Full Diet Plan
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Tracker Widgets */}
+                        <div className="lg:col-span-1 space-y-6">
+                            {/* Water Tracker */}
+                            <div className="bg-white p-6 rounded-2xl border border-clinical-100 shadow-sm relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-4 opacity-10 text-clinical-600"><IconDroplet/></div>
+                                <h3 className="font-bold text-clinical-800 mb-4 flex items-center gap-2"><IconDroplet /> Water Intake Tracker</h3>
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    {[1,2,3,4,5,6,7,8].map(i => (
+                                        <button key={i} onClick={() => setWater(i)} className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold transition-all ${water >= i ? 'bg-clinical-500 text-white shadow-inner scale-105' : 'bg-slate-100 text-slate-400 border border-slate-200 hover:bg-slate-200'}`}>
+                                            💧
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="text-sm font-medium text-slate-500">{water} of 8 glasses consumed today</p>
+                            </div>
+
+                            {/* Mood Tracker */}
+                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-center">
+                                <h3 className="font-bold text-slate-700 mb-4">How are you feeling today?</h3>
+                                <div className="flex justify-center gap-3">
+                                    {['😫', '😟', '😐', '🙂', '🤩'].map(e => (
+                                        <button key={e} onClick={() => setMood(e)} className={`text-3xl transition-transform hover:scale-125 ${mood === e ? 'scale-125 drop-shadow-md' : 'opacity-40 grayscale'}`}>{e}</button>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            {/* Simple Progress Bars: Progress */}
+                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                                <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><IconTrendingUp /> Weekly Adherence</h3>
+                                <div className="space-y-3">
+                                    {weeklyProgress.map((day, idx) => (
+                                        <div key={idx} onClick={() => setSelectedDay(day.day)} className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition ${selectedDay === day.day ? 'bg-clinical-50 ring-1 ring-clinical-200 shadow-sm' : 'hover:bg-slate-50'}`}>
+                                            <span className="text-xs font-semibold text-slate-500 w-8">{day.day}</span>
+                                            <div className="flex-1 bg-slate-200 h-2 rounded-full overflow-hidden">
+                                                <div className="bg-clinical-500 h-full rounded-full transition-all duration-1000" style={{width: `${day.completion}%`}} />
+                                            </div>
+                                            <span className="text-xs font-bold text-slate-700 w-8 text-right">{day.completion}%</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Today's Schedule (Interactive) */}
+                        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col hidden sm:flex">
+                            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                                <div>
+                                    <h2 className="text-xl font-bold text-slate-800">{selectedDay === 'Sun' ? "Today's" : selectedDay + "'s"} Meal Tracking</h2>
+                                    <p className="text-sm text-slate-500 font-medium">{selectedDay === 'Sun' ? todayStr : `Adherence for ${selectedDay}`}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">{Object.values(trackedMeals).filter(Boolean).length}/5 Completed</span>
+                                </div>
+                            </div>
+                            
+                            <div className="p-2 flex-1">
+                                {activePlan ? (
+                                    <div className="space-y-2 p-2">
+                                        {[
+                                            {id: 'morning', label: 'Early Morning', time: '6:30 AM', icon: <IconSunrise />},
+                                            {id: 'breakfast', label: 'Breakfast', time: '9:00 AM', icon: <IconCoffee />},
+                                            {id: 'lunch', label: 'Lunch', time: '1:30 PM', icon: <IconMenu />},
+                                            {id: 'evening', label: 'Evening Snack', time: '5:00 PM', icon: <IconActivity />},
+                                            {id: 'dinner', label: 'Dinner', time: '8:00 PM', icon: <IconMoon />}
+                                        ].map((meal, idx) => {
+                                            const isDone = trackedMeals[meal.id];
+                                            const currentFeeling = mealFeelings[meal.id];
+                                            const currentText = switchedMeals[meal.id] !== undefined ? LIGHTER_OPTIONS[meal.id][switchedMeals[meal.id]] : activePlan.meals[meal.id];
+                                            
+                                            return (
+                                            <div key={meal.id} className={`flex flex-col sm:flex-row gap-4 p-4 rounded-xl transition border-l-4 ${isDone ? 'bg-emerald-50/30 border-l-emerald-400' : 'hover:bg-slate-50 border-l-transparent border border-slate-100'}`}>
+                                                
+                                                {/* Left side: Checkbox & Icon */}
+                                                <div className="flex items-start gap-4 flex-1">
+                                                    <div className="pt-1">
+                                                        <button 
+                                                            onClick={() => setTrackedMeals({...trackedMeals, [meal.id]: !isDone})}
+                                                            className={`w-6 h-6 rounded flex items-center justify-center border transition-colors ${isDone ? 'bg-emerald-500 border-emerald-600 text-white' : 'border-slate-300 bg-white hover:border-emerald-400'}`}
+                                                        >
+                                                            {isDone && <span className="text-sm font-bold">✓</span>}
+                                                        </button>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className={`font-bold flex items-center gap-2 ${isDone ? 'text-emerald-800 line-through opacity-70' : 'text-slate-800'}`}>
+                                                                <span className="text-slate-400 w-5 h-5">{meal.icon}</span> {meal.label}
+                                                            </span>
+                                                            <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full flex items-center gap-1">⏰ {meal.time}</span>
+                                                        </div>
+                                                        <p className={`text-sm leading-relaxed ${isDone ? 'text-slate-400' : 'text-slate-600'}`}>{currentText}</p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Right side: Actions / Feel tracking */}
+                                                <div className="sm:w-1/3 sm:border-l border-slate-100 sm:pl-4 flex flex-col justify-center gap-2 mt-2 sm:mt-0">
+                                                    {!isDone ? (
+                                                        <div className="flex flex-col gap-2">
+                                                            <button onClick={() => handleSwitchLighter(meal.id)} className="text-xs font-semibold text-clinical-600 hover:bg-clinical-50 border border-clinical-100 py-1.5 px-3 rounded-lg w-full text-left transition transform active:scale-95 duration-150">🔄 Switch to Lighter Option</button>
+                                                            {user.conditions.includes('Diabetes') && meal.id === 'evening' && (
+                                                                <button className="text-xs font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 py-1.5 px-3 rounded-lg w-full text-left transition flex items-center justify-between">
+                                                                    <span>❗ Sugar Drop Risk</span> <span>View Snacks</span>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="bg-white border border-slate-100 rounded-lg p-2 text-center shadow-sm">
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">How do you feel?</p>
+                                                            <div className="flex justify-center gap-1.5">
+                                                                {['🔋', '🎈', '🤢'].map(f => (
+                                                                    <button 
+                                                                        key={f}
+                                                                        title={f==='🔋'?'Energized':f==='🎈'?'Bloated/Heavy':'Nauseous'}
+                                                                        onClick={() => setMealFeelings({...mealFeelings, [meal.id]: f})}
+                                                                        className={`w-7 h-7 flex items-center justify-center rounded transition ${currentFeeling === f ? 'bg-slate-200 scale-110' : 'hover:bg-slate-100 opacity-60'}`}
+                                                                    >{f}</button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                            </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p className="p-6 text-slate-500 text-center">No active plan found.</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const DietPlanView = ({ user, navTo }) => {
+            const plans = db.getPlansByPatientId(user.id);
+            const plan = plans[plans.length - 1];
+            const pdfRef = useRef(null);
+
+            const exportPDF = async () => {
+                if(!pdfRef.current) return;
+                const canvas = await window.html2canvas(pdfRef.current, {scale: 2});
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'pt', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save(`${user.name.replace(' ','_')}_Clinical_Diet.pdf`);
+            };
+
+            const shareWA = () => {
+                const text = encodeURIComponent(`Here is my clinical diet plan generated on CareDiet:
+Morning: ${plan.meals.morning}
+Lunch: ${plan.meals.lunch}
+Dinner: ${plan.meals.dinner}
+                `);
+                window.open(`https://wa.me/?text=${text}`, '_blank');
+            };
+
+            if(!plan) return <div className="p-8 text-center"><button onClick={() => navTo('dashboard')}>Back</button> No plan.</div>;
+
+            return (
+                <div className="max-w-4xl mx-auto p-4 py-8">
+                    <div className="flex justify-between items-center mb-6">
+                        <button onClick={() => navTo('dashboard')} className="text-slate-500 font-semibold hover:text-slate-800">&larr; Back to Dashboard</button>
+                        <div className="flex gap-2">
+                            <button onClick={shareWA} className="px-4 py-2 bg-green-50 text-green-700 font-bold rounded-lg border border-green-200 hover:bg-green-100 flex items-center gap-2 text-sm"><IconShare /> Share Whatsapp</button>
+                            <button onClick={exportPDF} className="px-4 py-2 bg-clinical-600 text-white font-bold rounded-lg hover:bg-clinical-700 flex items-center gap-2 text-sm shadow"><IconPrinter /> Export to PDF</button>
+                        </div>
+                    </div>
+
+                    {/* PDF Wrapper */}
+                    <div className="bg-white shadow-xl rounded-2xl border border-slate-200 overflow-hidden" ref={pdfRef}>
+                        {/* Header banner */}
+                        <div className="bg-clinical-800 p-8 text-white">
+                            <h1 className="text-3xl font-display font-bold mb-2">Personalized Clinical Diet Plan</h1>
+                            <p className="text-clinical-200 font-medium">Generated safely based on your health assessment.</p>
+                        </div>
+
+                        {/* Patient Meta */}
+                        <div className="bg-slate-50 border-b border-slate-200 p-6 flex justify-between divide-x divide-slate-200">
+                            <div className="flex-1 pr-4">
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Patient Name</p>
+                                <p className="text-lg font-bold text-slate-800">{user.name}</p>
+                                <p className="text-sm text-slate-500">{user.age}Y, {user.gender}</p>
+                            </div>
+                            <div className="flex-1 px-4">
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Primary Focus</p>
+                                <p className="text-sm font-semibold text-clinical-700 leading-tight">
+                                    {user.conditions.length > 0 ? user.conditions.join(", ") : "General Wellness"}
+                                </p>
+                            </div>
+                            <div className="flex-[0.6] pl-4 text-right">
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Generated</p>
+                                <p className="text-sm font-bold text-slate-800">{new Date(plan.generatedDate).toLocaleDateString()}</p>
+                            </div>
+                        </div>
+
+                        {/* DOs and DONTs Section */}
+                        <div className="grid grid-cols-2">
+                            <div className="p-8 border-r border-slate-200 bg-white">
+                                <h3 className="font-bold text-emerald-700 text-lg mb-4 flex items-center gap-2">✓ Dietary DOs</h3>
+                                <ul className="space-y-3">
+                                    {plan.dos.map((item, i) => (
+                                        <li key={i} className="text-slate-700 text-sm font-medium flex items-start"><span className="text-emerald-500 mr-2 mt-0.5">•</span> {item}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                            <div className="p-8 bg-red-50/20">
+                                <h3 className="font-bold text-red-700 text-lg mb-4 flex items-center gap-2">✕ Dietary DON'Ts</h3>
+                                <ul className="space-y-3">
+                                    {plan.donts.map((item, i) => (
+                                        <li key={i} className="text-slate-700 text-sm font-medium flex items-start"><span className="text-red-500 mr-2 mt-0.5">•</span> {item}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+
+                        {/* The Actual Diet Component */}
+                        <div className="p-8 border-t border-slate-200 bg-white">
+                            <h3 className="text-xl font-bold text-slate-800 mb-6 border-b pb-2">Daily Timetable</h3>
+                            
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="border-b-2 border-slate-800 text-sm uppercase tracking-wider text-slate-500">
+                                        <th className="py-3 px-2 w-1/4">Meal & Time</th>
+                                        <th className="py-3 px-2">Clinical Recommendation</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    <tr>
+                                        <td className="py-5 px-2 align-top"><strong className="block text-clinical-800">Early Morning</strong><span className="text-sm text-slate-500">6:30 AM</span></td>
+                                        <td className="py-5 px-2 text-slate-700 font-medium">{plan.meals.morning}</td>
+                                    </tr>
+                                    <tr className="bg-slate-50/50">
+                                        <td className="py-5 px-2 align-top"><strong className="block text-clinical-800">Breakfast</strong><span className="text-sm text-slate-500">9:00 AM</span></td>
+                                        <td className="py-5 px-2 text-slate-700 font-medium">{plan.meals.breakfast}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="py-5 px-2 align-top"><strong className="block text-clinical-800">Lunch</strong><span className="text-sm text-slate-500">1:30 PM</span></td>
+                                        <td className="py-5 px-2 text-slate-700 font-medium">{plan.meals.lunch}</td>
+                                    </tr>
+                                    <tr className="bg-slate-50/50">
+                                        <td className="py-5 px-2 align-top"><strong className="block text-clinical-800">Evening</strong><span className="text-sm text-slate-500">5:00 PM</span></td>
+                                        <td className="py-5 px-2 text-slate-700 font-medium">{plan.meals.evening}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="py-5 px-2 align-top"><strong className="block text-clinical-800">Dinner</strong><span className="text-sm text-slate-500">8:00 PM</span></td>
+                                        <td className="py-5 px-2 text-slate-700 font-medium">{plan.meals.dinner}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Extra features for Hackathon (Emergency snacks, Grocery list) */}
+                        <div className="bg-slate-800 text-white p-6 pb-8 grid grid-cols-2 gap-8 text-sm">
+                            <div>
+                                <h4 className="font-bold text-amber-400 mb-3 tracking-widest uppercase text-xs">⚠️ Emergency Snacks</h4>
+                                <p className="mb-2 text-slate-300">If you experience sudden weakness or blood sugar drops:</p>
+                                <ul className="list-disc pl-4 space-y-1 text-slate-200 font-semibold">
+                                    {plan.emergencySnacks.map((s,i) => <li key={i}>{s}</li>)}
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-clinical-300 mb-3 tracking-widest uppercase text-xs">🛒 Weekly Grocery Focus</h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {plan.groceryList.map((g,i) => <span key={i} className="bg-slate-700 px-2 py-1 rounded border border-slate-600">{g}</span>)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        const FoodLibraryView = ({ user, navTo }) => {
+            const library = db.getCollection('FoodLibrary');
+            const [search, setSearch] = useState('');
+            const [filter, setFilter] = useState('all');
+
+            const filtered = library.filter(f => 
+                f.name.toLowerCase().includes(search.toLowerCase()) && 
+                (filter === 'all' || f.category === filter || f.zone === filter)
+            );
+
+            return (
+                <div className="max-w-6xl mx-auto p-4 py-8 animate-[fadeIn_0.5s]">
+                    <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h1 className="text-3xl font-display font-bold text-slate-800">Food Library</h1>
+                            <p className="text-slate-500">Explore clinical benefits of ingredients.</p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex gap-4 mb-6">
+                        <input type="text" placeholder="Search foods..." value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 p-3 bg-white border border-slate-200 rounded-xl" />
+                        <select value={filter} onChange={e=>setFilter(e.target.value)} className="p-3 bg-white border border-slate-200 rounded-xl">
+                            <option value="all">All Zones</option>
+                            <option value="green">Best (Green)</option>
+                            <option value="yellow">Moderate (Yellow)</option>
+                            <option value="red">Avoid (Red)</option>
+                        </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {filtered.map(food => (
+                            <div key={food.id} className={`bg-white rounded-xl shadow-sm border-t-4 p-5 ${food.zone==='green'?'border-t-green-500':food.zone==='yellow'?'border-t-yellow-500':'border-t-red-500'}`}>
+                                <h3 className="text-xl font-bold text-slate-800 mb-1">{food.name}</h3>
+                                <p className="text-sm text-slate-500 mb-3 capitalize">{food.category}</p>
+                                
+                                <div className="grid grid-cols-4 gap-2 mb-4">
+                                    <div className="text-center p-2 bg-slate-50 rounded"><div className="text-xs text-slate-500">Cal</div><div className="font-bold">{food.calories}</div></div>
+                                    <div className="text-center p-2 bg-slate-50 rounded"><div className="text-xs text-slate-500">Pro</div><div className="font-bold">{food.protein}</div></div>
+                                    <div className="text-center p-2 bg-slate-50 rounded"><div className="text-xs text-slate-500">Carb</div><div className="font-bold">{food.carbs}</div></div>
+                                    <div className="text-center p-2 bg-slate-50 rounded"><div className="text-xs text-slate-500">Fib</div><div className="font-bold">{food.fiber}</div></div>
+                                </div>
+                                
+                                <div className="text-sm">
+                                    <span className="font-semibold text-slate-700">Benefits:</span> {food.benefits.join(', ')}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )
+        };
+
+        const NutritionAnalyzerView = ({ user, navTo }) => {
+            const [meals, setMeals] = useState([{id: 1, foodId: ''}]);
+            const library = db.getCollection('FoodLibrary');
+            
+            // Calculate totals
+            const totals = meals.reduce((acc, curr) => {
+                const food = library.find(f => f.id === curr.foodId);
+                if(food) {
+                    acc.calo += food.calories;
+                    acc.pro += food.protein;
+                    acc.carb += food.carbs;
+                    acc.fib += food.fiber;
+                }
+                return acc;
+            }, {calo: 0, pro: 0, carb: 0, fib: 0});
+
+            // Recharts Data
+            const data = [
+                { name: 'Protein', value: totals.pro, fullMark: 60 },
+                { name: 'Carbs', value: totals.carb, fullMark: 250 },
+                { name: 'Fiber', value: totals.fib, fullMark: 30 }
+            ];
+
+            return (
+                <div className="max-w-6xl mx-auto p-4 py-8 animate-[fadeIn_0.5s]">
+                    <div className="mb-8">
+                        <h1 className="text-3xl font-display font-bold text-slate-800">Nutrition Analyzer</h1>
+                        <p className="text-slate-500">Log your meals to see real-time macronutrient breakdown.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Input Section */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><div className="w-8 h-8 bg-clinical-100 text-clinical-600 rounded flex items-center justify-center">🥗</div> What did you eat today?</h2>
+                            
+                            <div className="space-y-4">
+                                {meals.map((m, i) => (
+                                    <div key={m.id} className="flex gap-4">
+                                        <select value={m.foodId} onChange={e => {
+                                            const newMeals = [...meals];
+                                            newMeals[i].foodId = e.target.value;
+                                            setMeals(newMeals);
+                                        }} className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                                            <option value="">Select a food item...</option>
+                                            {library.map(l => <option key={l.id} value={l.id}>{l.name} - {(l.calories).toFixed(2)} kcal</option>)}
+                                        </select>
+                                        <button onClick={() => setMeals(meals.filter(x => x.id !== m.id))} className="px-4 text-red-500 hover:bg-red-50 rounded-xl font-bold">✕</button>
+                                    </div>
+                                ))}
+                                <button onClick={() => setMeals([...meals, {id: Date.now(), foodId: ''}])} className="w-full py-3 border-2 border-dashed border-slate-300 text-slate-500 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-700 transition">+ Add another item</button>
+                            </div>
+                        </div>
+
+                        {/* Analysis Section */}
+                        <div className="bg-slate-800 text-white p-6 rounded-2xl shadow-xl">
+                            <h2 className="text-xl font-bold mb-6 text-clinical-300 border-b border-slate-700 pb-2">Daily Breakdown</h2>
+                            
+                            <div className="mb-6">
+                                <span className="text-4xl font-display font-bold">{totals.calo.toFixed(2)}</span> <span className="text-slate-400">kcal consumed</span>
+                            </div>
+
+                            <div className="space-y-4 mb-6">
+                                <div>
+                                    <div className="flex justify-between text-sm font-semibold mb-1">
+                                        <span className="text-clinical-200">Protein</span>
+                                        <span className="text-white">{totals.pro.toFixed(2)}g / {data.find(d=>d.name==='Protein').fullMark.toFixed(2)}g</span>
+                                    </div>
+                                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-blue-400" style={{width: `${Math.min((totals.pro / data.find(d=>d.name==='Protein').fullMark)*100, 100)}%`}} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-sm font-semibold mb-1">
+                                        <span className="text-clinical-200">Carbs</span>
+                                        <span className="text-white">{totals.carb.toFixed(2)}g / {data.find(d=>d.name==='Carbs').fullMark.toFixed(2)}g</span>
+                                    </div>
+                                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-blue-400" style={{width: `${Math.min((totals.carb / data.find(d=>d.name==='Carbs').fullMark)*100, 100)}%`}} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-sm font-semibold mb-1">
+                                        <span className="text-clinical-200">Fiber</span>
+                                        <span className="text-white">{totals.fib.toFixed(2)}g / {data.find(d=>d.name==='Fiber').fullMark.toFixed(2)}g</span>
+                                    </div>
+                                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-blue-400" style={{width: `${Math.min((totals.fib / data.find(d=>d.name==='Fiber').fullMark)*100, 100)}%`}} />
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-slate-700/50 p-4 rounded-xl border border-slate-600">
+                                {totals.pro < 40 && <p className="text-yellow-400 text-sm font-semibold flex items-center gap-2">⚠️ Missing Nutrients: Add more protein in your next meal (try Lentils or Eggs).</p>}
+                                {totals.fib < 20 && <p className="text-orange-400 text-sm font-semibold flex items-center gap-2 mt-2">⚠️ Low Fiber: Add fruits or oats to aid digestion.</p>}
+                                {totals.pro >= 40 && totals.fib >= 20 && <p className="text-emerald-400 text-sm font-semibold flex items-center gap-2">✓ Great job! Your macros look balanced.</p>}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [view, setView] = useState('landing'); // landing, login, register, dashboard, diet-plan
+            const [currentUser, setCurrentUser] = useState(null);
+
+            // Simple auth check on load
+            useEffect(() => {
+                const storedUserId = sessionStorage.getItem('activePatient');
+                if (storedUserId) {
+                    const u = db.getItemById('Patients', storedUserId);
+                    if (u) {
+                        setCurrentUser(u);
+                        setView('dashboard');
+                    }
+                }
+            }, []);
+
+            const handleLogin = (user) => {
+                sessionStorage.setItem('activePatient', user.id);
+                setCurrentUser(user);
+                setView('dashboard');
+            };
+
+            const handleLogout = () => {
+                sessionStorage.removeItem('activePatient');
+                setCurrentUser(null);
+                setView('landing');
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col relative w-full overflow-hidden">
+                    <div className="absolute inset-0 bg-medical-pattern opacity-30 pointer-events-none" />
+                    
+                    <Topbar currentView={view} onNavigate={setView} onLogout={handleLogout} />
+                    
+                    <main className="flex-1 relative z-10 w-full overflow-y-auto pb-20 sm:pb-0">
+                        {view === 'landing' && <LandingPage navTo={setView} />}
+                        {view === 'login' && <PatientLogin navTo={setView} onLogin={handleLogin} />}
+                        {view === 'register' && <RegistrationFlow navTo={setView} onLogin={handleLogin} />}
+                        {view === 'dashboard' && currentUser && <PatientDashboard user={currentUser} navTo={setView} />}
+                        {view === 'diet-plan' && currentUser && <DietPlanView user={currentUser} navTo={setView} />}
+                        {view === 'food-library' && currentUser && <FoodLibraryView user={currentUser} navTo={setView} />}
+                        {view === 'nutrition-analyzer' && currentUser && <NutritionAnalyzerView user={currentUser} navTo={setView} />}
+                    </main>
+                    {/* Multi-view support mobile nav could go here */}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
